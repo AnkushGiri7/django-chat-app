@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block styles %}
+<style>
+    body, html {
+        height: 100%;
+    }
+
+    .messages-box {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .messages-list {
+        padding-left: 0;
+    }
+
+    .message {
+        background-color: rgb(254, 224, 162);
+        width: 24%;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        list-style: none;
+    }
+
+    .message-text {
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    .sent {
+        /* width: 400px;
+        background-color: #dcf8c6;
+        display: flex;
+        right: 0;
+        justify-content: flex-end;
+        border-radius: 20px; */
+        float: right;
+        clear: both;
+    }
+
+    .received {
+        /* display: flex;
+        background-color: #f1f0f0;
+        justify-content: flex-start; */
+        float: left;
+        clear: both;
+    }
+
+    .message-sender {
+        margin-bottom: 5px;
+    }
+
+    .message-content {
+        word-wrap: break-word;
+    }
+
+    .message-form {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+
+    /* .message-input {
+        flex: 1;
+        border-radius: 0;
+        border-right: none;
+    } */
+
+    .btn-send {
+        border-radius: 0;
+    }
+
+    .chat-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+
+    .dot {
+        height: 50px;
+        width: 50px;
+        background-color: #bbb;
+        border-radius: 50%;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+<div class="d-flex flex-column">
+
+
+    <nav class="navbar bg-success p-2 text-white bg-opacity-75 ">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <div class="d-flex align-items-center">
+                    <a class="navbar-brand" href="#">
+                        <span class="dot"></span>
+                    </a>
+                    <p class="fs-2 mb-0 ms-2">Gemini AI</p>
+                </div>
+                <div class="d-flex align-items-center">
+                    <p class="mb-0 me-3"><b>Welcome, {{ user.username }}</b></p>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-info mt-2">Log Out</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% else %}
+    <nav class="navbar bg-success p-2 text-white bg-opacity-75">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <div class="d-flex align-items-center">
+                    <a class="navbar-brand" href="#">
+                        <span class="dot"></span>
+                    </a>
+                    <p class="fs-2 mb-0 ms-2">Gemini AI</p>
+                </div>
+                <div>
+                    <a class="btn btn-info" href="{% url 'register' %}">Register</a>
+                    <a class="btn btn-info ms-2" href="{% url 'login' %}">Login</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container">
+        <div class="card-body messages-box">
+            <ul class="list-unstyled messages-list" id="messages-list">
+                {% for chat in chats %}
+                {% if chat.user == request.user %}
+                <div>
+                    <li class="message sent">
+                        <div class="message-text">
+                            <div class="message-sender">
+                                <b>You</b>
+                                </div>
+                                <div class="message-content">
+                                    {{chat.message}}
+                                </div>
+                            </div>
+                        </li>
+                    </div>
+                    
+                    <div>
+                        <li class="message received ">
+                            <div class="message-text">
+                                <div class="message-sender">
+                                    <b>Gemini AI</b>
+                                </div>
+                                <div class="message-content">
+                                    {{chat.response}}
+                                </div>
+                            </div>
+                        </li>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+        <form class="message-form " id="message-form">
+            {% csrf_token %}
+            <div class="input-group">
+                <input type="text" class="form-control message-input rounded-pill w-75" id="message-input" placeholder="Type your message...">
+                <div class="input-group-append">
+                    <button type="submit" class="btn btn-primary btn-send rounded-pill"><i class="bi bi-arrow-right-circle-fill"></i> Send</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    const messageForm = document.getElementById('message-form');
+    const messagesList = document.getElementById('messages-list');
+    const messageInput = document.getElementById('message-input');
+
+    messageForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const message = messageInput.value.trim();
+        if (message === '') {
+            return;
+        }
+
+        const messageItem = document.createElement('li');
+        messageItem.classList.add('message', 'sent');
+        messageItem.innerHTML = `
+            <div class="message-text">
+                <div class="message-sender">
+                    <b>You</b>
+                </div>
+                <div class="message-content">
+                    ${message}
+                </div>
+            </div>`;
+        messagesList.appendChild(messageItem);
+
+        fetch('', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'csrfmiddlewaretoken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'message': message,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            const response = data.response;
+            const responseItem = document.createElement('li');
+            responseItem.classList.add('message', 'received');
+            responseItem.innerHTML = `
+                <div class="message-text">
+                    <div class="message-sender">
+                        <b>Gemini AI</b>
+                    </div>
+                    <div class="message-content">
+                        ${response}
+                    </div>
+                </div>`;
+            messagesList.appendChild(responseItem);
+        });
+
+        messageInput.value = '';
+    });
+</script>
+
+{% endblock %}
